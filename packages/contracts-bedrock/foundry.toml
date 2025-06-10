@@ -8,6 +8,7 @@ src = 'src'
 out = 'forge-artifacts'
 script = 'scripts'
 build_info_path = 'artifacts/build-info'
+auto_detect_solc = true
 
 optimizer = true
 optimizer_runs = 999999
@@ -18,15 +19,13 @@ use_literal_content = true
 # also update the restrictions in the "LITE" profile to match. This guarantees
 # that builds will fully overwrite one another without needing to clean the
 # entire build directory.
-additional_compiler_profiles = [
-  { name = "dispute", optimizer_runs = 5000 },
-]
+additional_compiler_profiles = [{ name = "dispute", optimizer_runs = 5000 }]
 compilation_restrictions = [
   { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 5000 },
   { paths = "src/L1/StandardValidator.sol", optimizer_runs = 5000 },
-  { paths = "src/L1/OptimismPortal2.sol", optimizer_runs = 5000 }
+  { paths = "src/L1/OptimismPortal2.sol", optimizer_runs = 5000 },
 ]
 
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
@@ -46,22 +45,23 @@ remappings = [
   'ds-test/=lib/forge-std/lib/ds-test/src',
   'safe-contracts/=lib/safe-contracts/contracts',
   'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
-  'interfaces/=interfaces'
+  'interfaces/=interfaces',
+  'credible-std/=lib/credible-std/src',
 ]
 
 fs_permissions = [
-  { access='read-write', path='./.resource-metering.csv' },
-  { access='read-write', path='./snapshots/' },
-  { access='read-write', path='./deployments/' },
-  { access='read', path='./deploy-config/' },
-  { access='read', path='./deploy-config-periphery/' },
-  { access='read', path='./broadcast/' },
-  { access='read', path = './forge-artifacts/' },
-  { access='read-write', path='./.testdata/' },
-  { access='read', path='./kout-deployment' },
-  { access='read', path='./test/fixtures' },
-  { access='read', path='./lib/superchain-registry/superchain/configs/' },
-  { access='read', path='./lib/superchain-registry/validation/standard/' },
+  { access = 'read-write', path = './.resource-metering.csv' },
+  { access = 'read-write', path = './snapshots/' },
+  { access = 'read-write', path = './deployments/' },
+  { access = 'read', path = './deploy-config/' },
+  { access = 'read', path = './deploy-config-periphery/' },
+  { access = 'read', path = './broadcast/' },
+  { access = 'read', path = './forge-artifacts/' },
+  { access = 'read-write', path = './.testdata/' },
+  { access = 'read', path = './kout-deployment' },
+  { access = 'read', path = './test/fixtures' },
+  { access = 'read', path = './lib/superchain-registry/superchain/configs/' },
+  { access = 'read', path = './lib/superchain-registry/validation/standard/' },
 ]
 
 # 5159 error code is selfdestruct error code
@@ -79,10 +79,10 @@ gas_limit = 9223372036854775807
 runs = 64
 
 [fmt]
-line_length=120
-multiline_func_header='all'
-bracket_spacing=true
-wrap_comments=true
+line_length = 120
+multiline_func_header = 'all'
+bracket_spacing = true
+wrap_comments = true
 
 ################################################################
 #                         PROFILE: CI                          #
@@ -132,9 +132,7 @@ optimizer = false
 
 # IMPORTANT:
 # See the info in the "DEFAULT" profile to understand this section.
-additional_compiler_profiles = [
-  { name = "dispute", optimizer_runs = 0 },
-]
+additional_compiler_profiles = [{ name = "dispute", optimizer_runs = 0 }]
 compilation_restrictions = [
   { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 0 },
   { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 0 },

@@ -32,3 +32,6 @@
 [submodule "packages/contracts-bedrock/lib/superchain-registry"]
 	path = packages/contracts-bedrock/lib/superchain-registry
 	url = https://github.com/ethereum-optimism/superchain-registry
+[submodule "packages/contracts-bedrock/lib/credible-std"]
+	path = packages/contracts-bedrock/lib/credible-std
+	url = https://github.com/phylaxsystems/credible-std/
