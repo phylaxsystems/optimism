@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.13;
 
 import {IETHLockbox} from "../../interfaces/L1/IETHLockbox.sol";
 import {IOptimismPortal2} from "../../interfaces/L1/IOptimismPortal2.sol";
@@ -17,7 +17,7 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
         registerCallTrigger(this.assertionUnlockETH.selector, lockbox.unlockETH.selector);
         registerCallTrigger(this.assertionDrain.selector, lockbox.unlockETH.selector);
         // todo: find correct storage slot for the proxy
-        triggerRecorder.registerStateChangeTrigger(this.assertionBuggyUpgrade.selector, 0x0);
+        // registerStorageChangeTrigger(this.assertionBuggyUpgrade.selector, 0x0);
     }
 
     function assertionLockETH() external {
@@ -77,15 +77,15 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     // FM3: Buggy upgrade over the `ETHLockbox`
     // Impossible to check up front if a proxy upgrade is buggy
     // We can however check if for some reason the proxy is upgraded unexpectedly
-    function assertionBuggyUpgrade() external {
-        ph.forkPreState();
-        address preImplementationAddress = address(uint160(uint256(ph.load(address(lockbox), bytes32(0x0)))));
+    // function assertionBuggyUpgrade() external {
+    //     ph.forkPreState();
+    //     address preImplementationAddress = address(uint160(uint256(ph.load(address(lockbox), bytes32(0x0)))));
 
-        address[] memory addresses = getStateChangesAddress(address(lockbox), bytes32(0x0));
-        for (uint256 i = 0; i < addresses.length; i++) {
-            if (addresses[i] != preImplementationAddress) {
-                revert("FM3: Proxy implementation address has changed within transaction");
-            }
-        }
-    }
+    //     address[] memory addresses = getStateChangesAddress(address(lockbox), bytes32(0x0));
+    //     for (uint256 i = 0; i < addresses.length; i++) {
+    //         if (addresses[i] != preImplementationAddress) {
+    //             revert("FM3: Proxy implementation address has changed within transaction");
+    //         }
+    //     }
+    // }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.13;
 
 // Testing
 import {CommonTest} from "../../test/setup/CommonTest.sol";
@@ -62,6 +62,7 @@ contract FMA_ETH_Lockbox_Assertions_Test is CredibleTest, ETHLockbox_TestInit {
 
         vm.mockCall(address(superchainConfig), abi.encodeWithSignature("paused(address)", address(0)), abi.encode(true));
 
+        vm.expectRevert("Assertions Reverted");
         vm.prank(address(optimismPortal2));
         cl.validate(
             "FMA_ETH_Lockbox_Assertions",
