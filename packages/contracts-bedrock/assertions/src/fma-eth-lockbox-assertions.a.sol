@@ -17,10 +17,11 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
         registerCallTrigger(this.assertionUnlockETH.selector, lockbox.unlockETH.selector);
         registerCallTrigger(this.assertionDrain.selector, lockbox.unlockETH.selector);
         // todo: find correct storage slot for the proxy
-        // registerStorageChangeTrigger(this.assertionBuggyUpgrade.selector, 0x0);
+        registerStorageChangeTrigger(this.assertionBuggyUpgrade.selector, 0x0);
     }
 
     function assertionLockETH() external {
+        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
         PhEvm.CallInputs[] memory calls = ph.getCallInputs(address(lockbox), lockbox.lockETH.selector);
 
         for (uint256 i = 0; i < calls.length; i++) {
@@ -35,6 +36,8 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     /// @notice Asserts that unlockETH can only be called by authorized portals
     /// @dev This assertion verifies the access control mechanism for unlockETH
     function assertionUnlockETH() external {
+        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
+
         // Don't allow unlocking when the lockbox is paused
         // return as early as possible if paused, since unlockETH is not allowed when paused
         require(!lockbox.paused(), "FM1: Lockbox is paused");
@@ -53,6 +56,8 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     /// @notice Asserts that the lockbox cannot be drained in a single transaction
     /// @dev This assertion verifies that the lockbox cannot be drained in a single transaction
     function assertionDrain() external {
+        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
+
         // Don't allow draining when the lockbox is paused
         // return as early as possible if paused, since drain is not allowed when paused
         require(!lockbox.paused(), "FM1: Lockbox is paused");
@@ -77,15 +82,17 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     // FM3: Buggy upgrade over the `ETHLockbox`
     // Impossible to check up front if a proxy upgrade is buggy
     // We can however check if for some reason the proxy is upgraded unexpectedly
-    // function assertionBuggyUpgrade() external {
-    //     ph.forkPreState();
-    //     address preImplementationAddress = address(uint160(uint256(ph.load(address(lockbox), bytes32(0x0)))));
+    function assertionBuggyUpgrade() external {
+        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
 
-    //     address[] memory addresses = getStateChangesAddress(address(lockbox), bytes32(0x0));
-    //     for (uint256 i = 0; i < addresses.length; i++) {
-    //         if (addresses[i] != preImplementationAddress) {
-    //             revert("FM3: Proxy implementation address has changed within transaction");
-    //         }
-    //     }
-    // }
+        ph.forkPreState();
+        address preImplementationAddress = address(uint160(uint256(ph.load(address(lockbox), bytes32(0x0)))));
+
+        address[] memory addresses = getStateChangesAddress(address(lockbox), bytes32(0x0));
+        for (uint256 i = 0; i < addresses.length; i++) {
+            if (addresses[i] != preImplementationAddress) {
+                revert("FM3: Proxy implementation address has changed within transaction");
+            }
+        }
+    }
 }
