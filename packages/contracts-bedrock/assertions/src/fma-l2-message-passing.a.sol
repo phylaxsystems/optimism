@@ -26,10 +26,6 @@ import {Predeploys} from "../../src/libraries/Predeploys.sol";
  * @dev Likelihood: MEDIUM - Depends on specific failure mode
  */
 contract FMA_L2_Message_Passing_Assertions is Assertion {
-    IL2ToL2CrossDomainMessenger messenger;
-    ICrossL2Inbox inbox;
-    ISuperchainTokenBridge tokenBridge;
-
     /// @notice Registers which functions should trigger which assertions
     /// @dev Links message passing functions to their respective invariant checks
     function triggers() external view override {
@@ -66,7 +62,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * @dev FM1a: Valid message is initiated but destination chain lacks origin chain in its dependency set (sendMessage)
      */
     function assertionInvalidDestinationChain_sendMessage() external {
-        messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
+        IL2ToL2CrossDomainMessenger messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
         PhEvm.CallInputs[] memory calls =
             ph.getCallInputs(address(messenger), IL2ToL2CrossDomainMessenger.sendMessage.selector);
         for (uint256 i = 0; i < calls.length; i++) {
@@ -86,7 +82,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * @dev FM1b: Valid message is initiated but destination chain lacks origin chain in its dependency set (sendERC20)
      */
     function assertionInvalidDestinationChain_sendERC20() external {
-        tokenBridge = ISuperchainTokenBridge(address(ph.getAssertionAdopter()));
+        ISuperchainTokenBridge tokenBridge = ISuperchainTokenBridge(address(ph.getAssertionAdopter()));
         PhEvm.CallInputs[] memory bridgeCalls =
             ph.getCallInputs(address(tokenBridge), ISuperchainTokenBridge.sendERC20.selector);
         for (uint256 i = 0; i < bridgeCalls.length; i++) {
@@ -112,7 +108,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * - Verifies message parameters are consistent
      */
     function assertionInvalidMessageValidation() external {
-        inbox = ICrossL2Inbox(address(ph.getAssertionAdopter()));
+        ICrossL2Inbox inbox = ICrossL2Inbox(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls = ph.getCallInputs(address(inbox), ICrossL2Inbox.validateMessage.selector);
 
@@ -160,7 +156,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * - Validates message lifecycle completeness
      */
     function assertionMessageRelayCompleteness() external {
-        messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
+        IL2ToL2CrossDomainMessenger messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls =
             ph.getCallInputs(address(messenger), IL2ToL2CrossDomainMessenger.sendMessage.selector);
@@ -203,7 +199,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * - Monitors replay protection integrity
      */
     function assertionReplayProtection() external {
-        messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
+        IL2ToL2CrossDomainMessenger messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls =
             ph.getCallInputs(address(messenger), IL2ToL2CrossDomainMessenger.relayMessage.selector);
@@ -212,18 +208,40 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
             // Decode the relay parameters
             (Identifier memory id, bytes memory sentMessage) = abi.decode(calls[i].input, (Identifier, bytes));
 
-            // For now, we'll use a simplified approach to calculate message hash
-            // since we can't easily decode the complex sentMessage structure without slice syntax
-            // The actual contract uses _decodeSentMessagePayload which we can't replicate here
-            bytes32 messageHash = keccak256(
-                abi.encodePacked(
-                    id.chainId, // source chain
-                    block.chainid, // destination chain (current chain)
-                    id.blockNumber, // use block number as proxy for nonce
-                    id.origin, // sender
-                    sentMessage // message data
-                )
-            );
+            // The sentMessage structure is: abi.encodePacked(abi.encode(selector, destination, target, nonce), abi.encode(sender, message))
+            // This means: [32 bytes selector][96 bytes topics][32 bytes sender][variable bytes message]
+
+            // First, decode the event selector (first 32 bytes)
+            bytes32 selector = abi.decode(sentMessage, (bytes32));
+            require(selector == IL2ToL2CrossDomainMessenger.SentMessage.selector, "FM4: Invalid event selector");
+
+            // Create temporary arrays for decoding
+            bytes memory topicsData = new bytes(96);
+            for (uint256 j = 0; j < 96; j++) {
+                topicsData[j] = sentMessage[j + 32];
+            }
+
+            // Decode the topics: destination, target, nonce (96 bytes)
+            (uint256 destination, address target, uint256 nonce) = abi.decode(topicsData, (uint256, address, uint256));
+
+            // Create temporary array for data part
+            bytes memory dataPart = new bytes(sentMessage.length - 128);
+            for (uint256 j = 0; j < dataPart.length; j++) {
+                dataPart[j] = sentMessage[j + 128];
+            }
+
+            // Decode the data: sender, message (remaining bytes)
+            (address sender, bytes memory message) = abi.decode(dataPart, (address, bytes));
+
+            // Calculate the correct message hash using the actual contract's hash function
+            bytes32 messageHash = Hashing.hashL2toL2CrossDomainMessage({
+                _destination: destination,
+                _source: id.chainId,
+                _nonce: nonce,
+                _sender: sender,
+                _target: target,
+                _message: message
+            });
 
             ph.forkPreState();
             bool wasAlreadyRelayed = messenger.successfulMessages(messageHash);
@@ -258,7 +276,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * - Monitors for duplicate executions
      */
     function assertionReentrancyProtection() external {
-        messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
+        IL2ToL2CrossDomainMessenger messenger = IL2ToL2CrossDomainMessenger(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls =
             ph.getCallInputs(address(messenger), IL2ToL2CrossDomainMessenger.relayMessage.selector);
@@ -267,17 +285,40 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
             // Decode the relay parameters
             (Identifier memory id, bytes memory sentMessage) = abi.decode(calls[i].input, (Identifier, bytes));
 
-            // For now, we'll use a simplified approach to calculate message hash
-            // since we can't easily decode the complex sentMessage structure without slice syntax
-            bytes32 messageHash = keccak256(
-                abi.encodePacked(
-                    id.chainId, // source chain
-                    block.chainid, // destination chain (current chain)
-                    id.blockNumber, // use block number as proxy for nonce
-                    id.origin, // sender
-                    sentMessage // message data
-                )
-            );
+            // The sentMessage structure is: abi.encodePacked(abi.encode(selector, destination, target, nonce), abi.encode(sender, message))
+            // This means: [32 bytes selector][96 bytes topics][32 bytes sender][variable bytes message]
+
+            // First, decode the event selector (first 32 bytes)
+            bytes32 selector = abi.decode(sentMessage, (bytes32));
+            require(selector == IL2ToL2CrossDomainMessenger.SentMessage.selector, "FM5: Invalid event selector");
+
+            // Create temporary arrays for decoding
+            bytes memory topicsData = new bytes(96);
+            for (uint256 j = 0; j < 96; j++) {
+                topicsData[j] = sentMessage[j + 32];
+            }
+
+            // Decode the topics: destination, target, nonce (96 bytes)
+            (uint256 destination, address target, uint256 nonce) = abi.decode(topicsData, (uint256, address, uint256));
+
+            // Create temporary array for data part
+            bytes memory dataPart = new bytes(sentMessage.length - 128);
+            for (uint256 j = 0; j < dataPart.length; j++) {
+                dataPart[j] = sentMessage[j + 128];
+            }
+
+            // Decode the data: sender, message (remaining bytes)
+            (address sender, bytes memory message) = abi.decode(dataPart, (address, bytes));
+
+            // Calculate the correct message hash using the actual contract's hash function
+            bytes32 messageHash = Hashing.hashL2toL2CrossDomainMessage({
+                _destination: destination,
+                _source: id.chainId,
+                _nonce: nonce,
+                _sender: sender,
+                _target: target,
+                _message: message
+            });
 
             // Verify that the message is only relayed once per transaction
             ph.forkPreState();
@@ -313,7 +354,7 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
      * - Ensures proper message execution patterns
      */
     function assertionRepeatedIdentifierValidation() external {
-        inbox = ICrossL2Inbox(address(ph.getAssertionAdopter()));
+        ICrossL2Inbox inbox = ICrossL2Inbox(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls = ph.getCallInputs(address(inbox), ICrossL2Inbox.validateMessage.selector);
 
