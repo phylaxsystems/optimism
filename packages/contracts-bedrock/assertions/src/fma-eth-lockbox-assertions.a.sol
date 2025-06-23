@@ -7,21 +7,19 @@ import {Assertion} from "credible-std/Assertion.sol";
 import {PhEvm} from "credible-std/PhEvm.sol";
 
 contract FMA_ETH_Lockbox_Assertions is Assertion {
-    IETHLockbox lockbox;
-
     /// @notice Registers which functions should trigger which assertions
     /// @dev Links deposit and withdraw functions to their respective invariant checks
     function triggers() external view override {
-        registerCallTrigger(this.assertionLockETH.selector, lockbox.lockETH.selector);
+        registerCallTrigger(this.assertionLockETH.selector, IETHLockbox.lockETH.selector);
         // ideally trigger on the ETHUnlocked event, but event triggers are not supported yet
-        registerCallTrigger(this.assertionUnlockETH.selector, lockbox.unlockETH.selector);
-        registerCallTrigger(this.assertionDrain.selector, lockbox.unlockETH.selector);
+        registerCallTrigger(this.assertionUnlockETH.selector, IETHLockbox.unlockETH.selector);
+        registerCallTrigger(this.assertionDrain.selector, IETHLockbox.unlockETH.selector);
         // todo: find correct storage slot for the proxy
         registerStorageChangeTrigger(this.assertionBuggyUpgrade.selector, 0x0);
     }
 
     function assertionLockETH() external {
-        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
+        IETHLockbox lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
         PhEvm.CallInputs[] memory calls = ph.getCallInputs(address(lockbox), lockbox.lockETH.selector);
 
         for (uint256 i = 0; i < calls.length; i++) {
@@ -36,7 +34,7 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     /// @notice Asserts that unlockETH can only be called by authorized portals
     /// @dev This assertion verifies the access control mechanism for unlockETH
     function assertionUnlockETH() external {
-        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
+        IETHLockbox lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
 
         // Don't allow unlocking when the lockbox is paused
         // return as early as possible if paused, since unlockETH is not allowed when paused
@@ -56,7 +54,7 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     /// @notice Asserts that the lockbox cannot be drained in a single transaction
     /// @dev This assertion verifies that the lockbox cannot be drained in a single transaction
     function assertionDrain() external {
-        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
+        IETHLockbox lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
 
         // Don't allow draining when the lockbox is paused
         // return as early as possible if paused, since drain is not allowed when paused
@@ -83,7 +81,7 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
     // Impossible to check up front if a proxy upgrade is buggy
     // We can however check if for some reason the proxy is upgraded unexpectedly
     function assertionBuggyUpgrade() external {
-        lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
+        IETHLockbox lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
 
         ph.forkPreState();
         address preImplementationAddress = address(uint160(uint256(ph.load(address(lockbox), bytes32(0x0)))));

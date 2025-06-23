@@ -26,8 +26,6 @@ import {PhEvm} from "credible-std/PhEvm.sol";
  * @dev Likelihood: LOW - Assumes contracts are well-tested and audited
  */
 contract FMA_Interop_Portal_Assertions is Assertion {
-    IAnchorStateRegistry anchorStateRegistry;
-
     /// @notice Registers which functions should trigger which assertions
     /// @dev Links deposit and withdraw functions to their respective invariant checks
     function triggers() external view override {
@@ -36,9 +34,9 @@ contract FMA_Interop_Portal_Assertions is Assertion {
         registerStorageChangeTrigger(this.assertionSetRespectedGameType.selector, bytes32(uint256(6)));
 
         // FM1: Call triggers for state-changing functions
-        registerCallTrigger(this.assertionSetAnchorState.selector, anchorStateRegistry.setAnchorState.selector);
+        registerCallTrigger(this.assertionSetAnchorState.selector, IAnchorStateRegistry.setAnchorState.selector);
         registerCallTrigger(
-            this.assertionBlacklistDisputeGame.selector, anchorStateRegistry.blacklistDisputeGame.selector
+            this.assertionBlacklistDisputeGame.selector, IAnchorStateRegistry.blacklistDisputeGame.selector
         );
 
         // FM2: Migration logic triggers
@@ -69,7 +67,7 @@ contract FMA_Interop_Portal_Assertions is Assertion {
      * @dev Risk Assessment: CRITICAL impact, LOW likelihood
      */
     function assertionUpdateRetirementTimestamp() external {
-        anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
+        IAnchorStateRegistry anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
 
         bytes32[] memory storageChanges = getStateChangesBytes32(address(anchorStateRegistry), bytes32(uint256(6)));
         uint64[] memory retirementTimestamps = new uint64[](storageChanges.length);
@@ -108,7 +106,7 @@ contract FMA_Interop_Portal_Assertions is Assertion {
      * @dev Ensures retirement timestamps are updated monotonically and correctly
      */
     function assertionSetRespectedGameType() external {
-        anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
+        IAnchorStateRegistry anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
 
         bytes32[] memory storageChanges = getStateChangesBytes32(address(anchorStateRegistry), bytes32(uint256(6)));
         uint32[] memory respectedGameTypes = new uint32[](storageChanges.length);
@@ -142,7 +140,7 @@ contract FMA_Interop_Portal_Assertions is Assertion {
      * @dev Cross-validates state reporting functions during critical operations
      */
     function assertionSetAnchorState() external {
-        anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
+        IAnchorStateRegistry anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls =
             ph.getCallInputs(address(anchorStateRegistry), anchorStateRegistry.setAnchorState.selector);
@@ -237,7 +235,7 @@ contract FMA_Interop_Portal_Assertions is Assertion {
      * @dev Validates that blacklisted games are properly excluded from all validity checks
      */
     function assertionBlacklistDisputeGame() external {
-        anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
+        IAnchorStateRegistry anchorStateRegistry = IAnchorStateRegistry(address(ph.getAssertionAdopter()));
 
         PhEvm.CallInputs[] memory calls =
             ph.getCallInputs(address(anchorStateRegistry), anchorStateRegistry.blacklistDisputeGame.selector);
