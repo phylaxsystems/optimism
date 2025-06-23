@@ -41,8 +41,9 @@ contract FMA_Interop_Portal_Assertions_Test is CredibleTest, FMA_Interop_Portal_
     function setUp() public override {
         super.setUp();
 
-        // Set gas price for assertion tests
-        vm.fee(100 gwei);
+        // OP test setup sets the fee to 1 gwei, which we currently don't handle
+        // So we set it back to 0 for the assertions
+        vm.fee(0);
 
         assertionAdopter = optimismPortal2;
         assertion = new FMA_Interop_Portal_Assertions();

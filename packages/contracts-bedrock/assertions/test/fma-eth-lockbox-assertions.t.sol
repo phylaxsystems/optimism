@@ -50,6 +50,10 @@ contract FMA_ETH_Lockbox_Assertions_Test is CredibleTest, ETHLockbox_TestInit {
 
         assertionAdopter = ethLockbox;
         assertion = new FMA_ETH_Lockbox_Assertions();
+
+        // OP test setup sets the fee to 1 gwei, which we currently don't handle
+        // So we set it back to 0 for the assertions
+        vm.fee(0);
     }
 
     function test_FMA_ETH_Lockbox_Paused_Assertion() public {
@@ -88,6 +92,7 @@ contract FMA_ETH_Lockbox_Assertions_Test is CredibleTest, ETHLockbox_TestInit {
         // ethLockbox.authorizePortal(optimismPortal2);
 
         vm.prank(address(optimismPortal2));
+        // Currently fails because of "RejectCallerWithCode"
         cl.validate(
             "FMA_ETH_Lockbox_Assertions",
             address(assertionAdopter),
