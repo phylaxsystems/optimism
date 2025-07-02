@@ -18,6 +18,8 @@ contract FMA_ETH_Lockbox_Assertions is Assertion {
         registerStorageChangeTrigger(this.assertionBuggyUpgrade.selector, 0x0);
     }
 
+    /// @notice Asserts that lockETH can only be called by authorized portals
+    /// @dev This assertion verifies the access control mechanism for lockETH
     function assertionLockETH() external {
         IETHLockbox lockbox = IETHLockbox(address(ph.getAssertionAdopter()));
         PhEvm.CallInputs[] memory calls = ph.getCallInputs(address(lockbox), lockbox.lockETH.selector);
