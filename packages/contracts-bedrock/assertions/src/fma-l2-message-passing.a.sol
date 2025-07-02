@@ -178,9 +178,6 @@ contract FMA_L2_Message_Passing_Assertions is Assertion {
             // Verify the message was properly recorded in sentMessages
             ph.forkPostState();
             require(messenger.sentMessages(expectedMessageHash), "FM3: Message not properly recorded in sentMessages");
-
-            // TODO: Add monitoring for messages that are sent but never relayed
-            // This would require tracking across multiple blocks/transactions
         }
     }
 
